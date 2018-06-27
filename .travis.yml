@@ -99,3 +99,8 @@ after_success:
 notifications:
   slack:
     secure: "b2/RUpO6gWEDgOI/sEWsjt2cVnwp3hOWUSMnHpVuY0pZBzzrICZ5MeqEulwCoKy+8ohaCmYUL42RzJwq1v2FITo5YDeiLrqmrkYR0Zieel/Vey+o6sBdR6y2yPvWjBmydHNvfUyMshT5iqEn4bS6bjhm57F0rLJX7mTqp19A+68="
+
+deploy:
+  provider: heroku
+  api_key:
+    secure: "37b21b1b-3917-4eae-bdae-827bf77f1a04"
