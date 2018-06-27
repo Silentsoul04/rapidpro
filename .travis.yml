@@ -1,106 +1,72 @@
-# use container-based Ubuntu Trusty
 dist:
-  - trusty
+- trusty
 sudo:
-  - false
-
+- false
 language: python
 python:
-  - "3.6.4"
+- 3.6.4
 addons:
   apt:
     packages:
-      - postgresql-9.6-postgis-2.3
-  postgresql: "9.6"
-
+    - postgresql-9.6-postgis-2.3
+  postgresql: '9.6'
 services:
-  - redis-server
-
+- redis-server
 cache:
   directories:
-    - "$HOME/.cache/pip"
-
+  - "$HOME/.cache/pip"
 before_install:
-  - wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.2.3.deb && sudo dpkg -i --force-confnew elasticsearch-6.2.3.deb
-  - sudo service elasticsearch start
-  - sleep 10
-
+- wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.2.3.deb
+  && sudo dpkg -i --force-confnew elasticsearch-6.2.3.deb
+- sudo service elasticsearch start
+- sleep 10
 install:
-  # install all Python dependencies
-  - travis_retry pip install --upgrade pip
-  - pip --version
-  - travis_retry pip install -r pip-freeze.txt --upgrade
-  - pip install coveralls
-  - pip install flake8
-
-  # switch to Node 6 and install our node dependencies
-  - nvm install 6
-  - nvm use 6
-  - npm install
-  - npm run build
-
+- travis_retry pip install --upgrade pip
+- pip --version
+- travis_retry pip install -r pip-freeze.txt --upgrade
+- pip install coveralls
+- pip install flake8
+- nvm install 6
+- nvm use 6
+- npm install
+- npm run build
 before_script:
-  # setup test database
-  - psql -U postgres -c "CREATE USER temba WITH PASSWORD 'temba';"
-  - psql -U postgres -c "ALTER ROLE temba WITH SUPERUSER;"
-  - psql -d 'template1' -U postgres -c "CREATE EXTENSION postgis;"
-  - psql -d 'template1' -U postgres -c "CREATE EXTENSION postgis_topology;"
-  - psql -d 'template1' -U postgres -c "CREATE EXTENSION hstore;"
-  - psql -U temba postgres -c "CREATE DATABASE temba;"
-
-  # use dev settings file
-  - ln -s $TRAVIS_BUILD_DIR/temba/settings.py.dev $TRAVIS_BUILD_DIR/temba/settings.py
-
-  # setup a goflow server instance
-  - GOFLOW_VERSION=0.10.7
-  - wget https://github.com/nyaruka/goflow/releases/download/v${GOFLOW_VERSION}/goflow_${GOFLOW_VERSION}_linux_amd64.tar.gz
-  - tar -xvf goflow_${GOFLOW_VERSION}_linux_amd64.tar.gz
-
-    # prepare rp-indexer binary
-  - RPINDEXER_VERSION=1.0.22
-  - wget https://github.com/nyaruka/rp-indexer/releases/download/v${RPINDEXER_VERSION}/rp-indexer_${RPINDEXER_VERSION}_linux_amd64.tar.gz
-  - tar -xvf rp-indexer_${RPINDEXER_VERSION}_linux_amd64.tar.gz
-
+- psql -U postgres -c "CREATE USER temba WITH PASSWORD 'temba';"
+- psql -U postgres -c "ALTER ROLE temba WITH SUPERUSER;"
+- psql -d 'template1' -U postgres -c "CREATE EXTENSION postgis;"
+- psql -d 'template1' -U postgres -c "CREATE EXTENSION postgis_topology;"
+- psql -d 'template1' -U postgres -c "CREATE EXTENSION hstore;"
+- psql -U temba postgres -c "CREATE DATABASE temba;"
+- ln -s $TRAVIS_BUILD_DIR/temba/settings.py.dev $TRAVIS_BUILD_DIR/temba/settings.py
+- GOFLOW_VERSION=0.10.7
+- wget https://github.com/nyaruka/goflow/releases/download/v${GOFLOW_VERSION}/goflow_${GOFLOW_VERSION}_linux_amd64.tar.gz
+- tar -xvf goflow_${GOFLOW_VERSION}_linux_amd64.tar.gz
+- RPINDEXER_VERSION=1.0.22
+- wget https://github.com/nyaruka/rp-indexer/releases/download/v${RPINDEXER_VERSION}/rp-indexer_${RPINDEXER_VERSION}_linux_amd64.tar.gz
+- tar -xvf rp-indexer_${RPINDEXER_VERSION}_linux_amd64.tar.gz
 script:
-  # any non-zero error code should be treated as an immediate failure
-  - set -e
-
-  # test that everything is well formatted
-  - black --line-length=119 temba --check --quiet
-  
-  # test PEP8 compliance on both Python 2 and 3
-  - flake8
-
-  # check for model changes not reflected in a migration
-  - python manage.py makemigrations --dry-run | grep 'No changes detected' || (echo 'There are changes which require migrations.' && exit 1)
-
-  # run our Javascript tests
-  - node_modules/karma/bin/karma start karma.conf.coffee --single-run --browsers PhantomJS
-
-  # check we can collect and compress all static files
-  - python manage.py collectstatic --noinput --verbosity=0
-  - (! python manage.py compress --extension=".haml" --settings=temba.settings_compress | grep 'Error') || exit 1
-
-  # fire up goflow
-  - ./flowserver --log-level=warn &
-  - jobs
-
-  # run our Python tests
-  - coverage run manage.py test --settings=temba.settings_travis --noinput --verbosity=2
-
-  - set +e
-
+- set -e
+- black --line-length=119 temba --check --quiet
+- flake8
+- python manage.py makemigrations --dry-run | grep 'No changes detected' || (echo
+  'There are changes which require migrations.' && exit 1)
+- node_modules/karma/bin/karma start karma.conf.coffee --single-run --browsers PhantomJS
+- python manage.py collectstatic --noinput --verbosity=0
+- (! python manage.py compress --extension=".haml" --settings=temba.settings_compress
+  | grep 'Error') || exit 1
+- "./flowserver --log-level=warn &"
+- jobs
+- coverage run manage.py test --settings=temba.settings_travis --noinput --verbosity=2
+- set +e
 after_success:
-  - pip install pyopenssl==17.4.0
-  - coveralls --rcfile .coveragerc_failcheck
-  - coverage report -i --rcfile .coveragerc
-  - coverage report -i --rcfile .coveragerc_failcheck --fail-under=100
-
+- pip install pyopenssl==17.4.0
+- coveralls --rcfile .coveragerc_failcheck
+- coverage report -i --rcfile .coveragerc
+- coverage report -i --rcfile .coveragerc_failcheck --fail-under=100
 notifications:
   slack:
-    secure: "b2/RUpO6gWEDgOI/sEWsjt2cVnwp3hOWUSMnHpVuY0pZBzzrICZ5MeqEulwCoKy+8ohaCmYUL42RzJwq1v2FITo5YDeiLrqmrkYR0Zieel/Vey+o6sBdR6y2yPvWjBmydHNvfUyMshT5iqEn4bS6bjhm57F0rLJX7mTqp19A+68="
-
+    secure: kbJU30gwr+peOAiZPDvVVMvxKUKbPmk/coLeVoQwn4pKawWE/Ue1JB1wjx7X87DX8a5H4rQPCtGPwsa35OtBk8W6RBhqz+A25CPfX8DrL323KcRJlXPmzx0LXlAkkuRc+Xrso04C5nBEgg78+35Sh9S4lIYWQ74PipE53ANBcBmuBa+O3tFSQUNdz5B92QUXPGU03LJDE3FWlsKHAfpRzQntcHhReQmJ4bvdG9dyoHQt2i04TZKfj0npRuCS5pAhi8wIXX8BTgOGkE7QeSXAVwE8GsSwdLhn5T9OquscDeQcl8d8Mf5fhWtcao2urXYPHQN92mfg6ihHq8tAoIoeCE4gYYEPLyrCxeQ5Zo/Rzf43EPvvqFU8+BYJ5xmqEeDnAmszukb/5ceC398wv67lmMMwOFGyKBYAlYWSq8tzuFSJwG1lprO2rA4UZBeZx0ky1TzWD4rjCKcgSunGOHGNy/OmZ6JlHA0wG72A5EmEMQ4vIbO86JoXursWgwq2A2QxKiBM/2uC5Ff5TMd+HXTF4pGl+zcyOPLgtzDX/24QfaUgrD9R2xamdLAImy8HRm6fcZBZI6ibvY9t5Uy55BJ7w/96yakgItWBf5EsDWYeANuQeURATfmUz9Lrz/75eT8h7OMdtSJcOrrfmb/xQ/Zbr7m7HAUNHbBhMvkuMh+rQM8=
 deploy:
   provider: heroku
   api_key:
-    secure: "37b21b1b-3917-4eae-bdae-827bf77f1a04"
+    secure: yTvyNPUoL5lpz9GSN7AnSgDS/uEFxxgeJDO0lqQtXLVNppqx3wUm9RTVZES/wnsGyaSiLflV3cAcd4SsjpAcfqW4UZ2s0GVryC8ZrcGg2I0gOKkW1HsXC1cEUeBBFEpsDR201sOPSiYi4E0pceR8/5naHpC33j/5+1KIi1uCNhMj8tHLb609b69zO4PleyS+bO0kYPfruKCaY0SQacyxXik3f0UeEW65onWu/vP4wZK7puFs4ft1tJ3VR3uHxGcaV6UWe23doS1S1lzCXx3mHTlD/I7MaXfj+Qnxb2fEBTWr6CqkCVX/x997S+NScDcoY3jLRl1VbUM1NJlhTuwsIEEJR+LGbbZDZw8o0Poq49JJ5mxqD6BqjhhmlYSTG+uknGsohtqogu6rIQyKo0CWwrbEBW9TbH9tKoVy+U5iwi+Tq3JhP7t9iboQUbL8T1sz2nbNR3r4w6yrmeME6hrSXg/S0yIvYfhQFGa1WF63t7V8Fidqers+xqDxMxNHg5Ma0ywW7NKw9BjWtD57YucX1LDsPhoKO6OiSYIBi03ofWJsmfbRrcjQrPBtZJtUoBacn3+B9LFhazji4fZtlgY2cxsrzzG5hOez3fJkqwIR0igdkfA0itLyUSEHeNxMers0SFwO9pBX2JXTxhPd52d0I3LS6/Xc75v6NxMQU9cxZOY=
